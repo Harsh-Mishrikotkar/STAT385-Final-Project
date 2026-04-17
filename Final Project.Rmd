@@ -1,0 +1,17 @@
+---
+title: "Final Project"
+author: "Yasmin Guadarrama, Harsh Mishrikotkar, Shivanshi Shukla"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load files}
+
+data <- read.csv("Tetuan City power consumption.csv")
+
+```
+
