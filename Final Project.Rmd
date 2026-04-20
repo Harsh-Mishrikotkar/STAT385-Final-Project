@@ -15,3 +15,11 @@ data <- read.csv("Tetuan City power consumption.csv")
 
 ```
 
+## Possible questions to address:
+
+- How well can we predict Zone 1, Zone 2, and Zone 3 power consumption using temperature, humidity, wind speed, general diffuse flows, diffuse flows, and time information?
+- Which variables are the most important drivers of power demand in each zone?
+- Do different zones behave differently, meaning should we build separate models for each zone instead of one combined model?
+- Does adding time based features, such as hour of day, day of week, or month, improve prediction accuracy beyond weather-only predictors?
+- Which method gives the best tradeoff between accuracy and interpretability for short-term electricity demand forecasting?
+
