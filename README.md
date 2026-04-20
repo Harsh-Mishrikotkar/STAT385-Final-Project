@@ -64,7 +64,7 @@
 		- Use variable importance or SHAP for tree-based models.
 		- Explain which weather/time factors seem most influential.
 	* Step 10: Write the report
-		- Your report should include:
+		- Report should include:
 			- problem statement
 			- exploratory analysis
 			- model equations
@@ -73,26 +73,18 @@
 			- interpretation
 			- limitations and future improvements
 5. Suggested model order
-	- Use this order in the report so it looks organized and intentional:
 	- Baseline linear regression
 	- Regularized regression
 	- Random forest
 	- Gradient boosting / XGBoost
 	- That sequence shows progression from simple to more flexible methods, which professors usually like because it proves you tried multiple approaches.
 
-6. What not to do
-	- Don’t randomly split the data.
-	- Don’t pretend this is a classification problem unless you intentionally create a new class label.
-	- Don’t use only one model and call it a day.
-	- Don’t skip feature engineering and then complain the model is weak.
-
-7. Report structure
-	- Use this structure in your final report:
-		- Introduction and project goal
-		- Data description
-		- Exploratory data analysis
-		- Methods
-		- Model tuning and selection
-		- Results
-		- Interpretation
-		- Conclusion and future work
+6. Report structure
+	- Introduction and project goal
+	- Data description
+	- Exploratory data analysis
+	- Methods
+	- Model tuning and selection
+	- Results
+	- Interpretation
+	- Conclusion and future work
