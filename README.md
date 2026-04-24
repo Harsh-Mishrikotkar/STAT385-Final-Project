@@ -76,8 +76,7 @@
 	- Baseline linear regression
 	- Regularized regression
 	- Random forest
-	- Gradient boosting / XGBoost
-	- That sequence shows progression from simple to more flexible methods, which professors usually like because it proves you tried multiple approaches.
+	- Other Models
 
 6. Report structure
 	- Introduction and project goal
