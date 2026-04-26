@@ -11,7 +11,135 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r load files}
 
-data <- read.csv("Tetuan City power consumption.csv")
+###############################################
+# STAT 385 Final Project
+# Tetuan City Power Consumption Analysis
+###############################################
+
+library(tidyverse)
+library(lubridate)
+library(GGally)
+
+#--------------------------------------------------
+# 1. Load and Inspect Data
+#--------------------------------------------------
+
+#setwd("C:/Users/yasmi/OneDrive/Desktop/Final Project")
+
+data <- read_csv("Tetuan City power consumption.csv")
+
+glimpse(data)
+summary(data)
+sum(duplicated(data))   # No duplicates
+
+#--------------------------------------------------
+# 2. Fix DateTime Format (Corrected)
+#--------------------------------------------------
+# The dataset contains multiple timestamp formats:
+# - "1/1/2017 0:00"
+# - "01/01/2017 00:00"
+# - "2017-01-01 00:00:00"
+# parse_date_time() handles all of them.
+
+data <- data %>%
+  mutate(DateTime = parse_date_time(
+    DateTime,
+    orders = c("d/m/Y H:M",
+               "d/m/Y H:M:S",
+               "Y-m-d H:M:S",
+               "m/d/Y H:M",
+               "m/d/Y H:M:S")
+  ))
+
+# Verify successful parsing
+sum(is.na(data$DateTime))   # Should be 0
+range(data$DateTime)        # Should show full 2017 range
+
+#--------------------------------------------------
+# 3. Clean Column Names (Fix spacing issues)
+#--------------------------------------------------
+
+data <- data %>%
+  rename(
+    Zone1 = `Zone 1 Power Consumption`,
+    Zone2 = `Zone 2  Power Consumption`,   # two spaces in original
+    Zone3 = `Zone 3  Power Consumption`    # two spaces in original
+  )
+
+#--------------------------------------------------
+# 4. Exploratory Data Analysis
+#--------------------------------------------------
+
+## 4a. Time Series Plot for All Zones
+data %>%
+  select(DateTime, Zone1, Zone2, Zone3) %>%
+  pivot_longer(-DateTime, names_to = "Zone", values_to = "Power") %>%
+  ggplot(aes(DateTime, Power, color = Zone)) +
+  geom_line(alpha = 0.4) +
+  labs(title = "Power Consumption Over Time", y = "Power") +
+  theme_minimal()
+
+## 4b. Histograms for All Variables
+data %>%
+  select(Temperature, Humidity, `Wind Speed`,
+         Zone1, Zone2, Zone3) %>%
+  pivot_longer(everything(), names_to = "Variable", values_to = "Value") %>%
+  ggplot(aes(Value)) +
+  geom_histogram(bins = 30, fill = "steelblue", color = "white") +
+  facet_wrap(~ Variable, scales = "free") +
+  theme_minimal()
+
+## 4c. Boxplots for Zone Power Consumption
+data %>%
+  select(Zone1, Zone2, Zone3) %>%
+  pivot_longer(everything(), names_to = "Zone", values_to = "Power") %>%
+  ggplot(aes(Zone, Power)) +
+  geom_boxplot() +
+  theme_minimal()
+
+## 4d. Correlation Matrix
+data_corr <- data %>%
+  select(Temperature, Humidity, `Wind Speed`,
+         `general diffuse flows`, `diffuse flows`,
+         Zone1, Zone2, Zone3)
+
+ggcorr(data_corr, label = TRUE)
+
+#--------------------------------------------------
+# 5. Feature Engineering
+#--------------------------------------------------
+
+data <- data %>%
+  mutate(
+    hour  = hour(DateTime),
+    dow   = wday(DateTime, label = TRUE, week_start = 1),
+    month = month(DateTime, label = TRUE)
+  )
+
+#--------------------------------------------------
+# 6. Standardize Numeric Predictors
+#--------------------------------------------------
+
+num_vars <- c("Temperature", "Humidity", "Wind Speed",
+              "general diffuse flows", "diffuse flows")
+
+data_scaled <- data %>%
+  mutate(across(all_of(num_vars), scale))
+
+#--------------------------------------------------
+# 7. Time-Based Train/Test Split
+#--------------------------------------------------
+
+n <- nrow(data_scaled)
+train_end <- floor(0.8 * n)
+
+train <- data_scaled[1:train_end, ]
+test  <- data_scaled[(train_end + 1):n, ]
+
+###################################################
+# End of Preprocessing
+###################################################
+
 
 ```
 
