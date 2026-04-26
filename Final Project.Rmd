@@ -120,7 +120,7 @@ test  <- data_scaled[(train_end + 1):n, ]
 
 ```
 
-```{Baseline Models (Linear Regression)}
+```{r Baseline Models (Linear Regression)}
 
 ## Convert categorical variables to factors
 train <- train %>%
@@ -156,7 +156,7 @@ summary(lm_z3)
 ```
 
 
-```{Improved Models}
+```{r Improved Models}
 
 ## 6A: Prepare Data for glmnet
 library(glmnet)
@@ -234,7 +234,7 @@ xgb_z3 <- xgb.train(
 ```
 
 
-```{Model Tuning(cross-validation)}
+```{r Model Tuning(cross-validation)}
 
 ## Ridge/Lasso/Elastic Net tuning
 ridge_z1$lambda.min
