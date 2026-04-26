@@ -7,34 +7,24 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-```
-
-```{r load files}
-
-###############################################
-# STAT 385 Final Project
-# Tetuan City Power Consumption Analysis
-###############################################
-
 library(tidyverse)
 library(lubridate)
 library(GGally)
+```
 
-#--------------------------------------------------
-# 1. Load and Inspect Data
-#--------------------------------------------------
+# STAT 385 Final Project
+# Tetuan City Power Consumption Analysis
 
+```{r Load and Inspect Data}
 #setwd("C:/Users/yasmi/OneDrive/Desktop/Final Project")
-
 data <- read_csv("Tetuan City power consumption.csv")
 
 glimpse(data)
 summary(data)
 sum(duplicated(data))   # No duplicates
+```
 
-#--------------------------------------------------
-# 2. Fix DateTime Format (Corrected)
-#--------------------------------------------------
+```{r Fix DateTime Format }
 # The dataset contains multiple timestamp formats:
 # - "1/1/2017 0:00"
 # - "01/01/2017 00:00"
@@ -54,22 +44,18 @@ data <- data %>%
 # Verify successful parsing
 sum(is.na(data$DateTime))   # Should be 0
 range(data$DateTime)        # Should show full 2017 range
+```
 
-#--------------------------------------------------
-# 3. Clean Column Names (Fix spacing issues)
-#--------------------------------------------------
-
+```{r Clean Column Names (Fix spacing issues)}
 data <- data %>%
   rename(
     Zone1 = `Zone 1 Power Consumption`,
     Zone2 = `Zone 2  Power Consumption`,   # two spaces in original
     Zone3 = `Zone 3  Power Consumption`    # two spaces in original
   )
+```
 
-#--------------------------------------------------
-# 4. Exploratory Data Analysis
-#--------------------------------------------------
-
+```{r Exploratory Data Analysis}
 ## 4a. Time Series Plot for All Zones
 data %>%
   select(DateTime, Zone1, Zone2, Zone3) %>%
@@ -104,10 +90,9 @@ data_corr <- data %>%
          Zone1, Zone2, Zone3)
 
 ggcorr(data_corr, label = TRUE)
+```
 
-#--------------------------------------------------
-# 5. Feature Engineering
-#--------------------------------------------------
+```{r Feature Engineering}
 
 data <- data %>%
   mutate(
@@ -115,39 +100,22 @@ data <- data %>%
     dow   = wday(DateTime, label = TRUE, week_start = 1),
     month = month(DateTime, label = TRUE)
   )
+```
 
-#--------------------------------------------------
-# 6. Standardize Numeric Predictors
-#--------------------------------------------------
+```{r Standardize Numeric Predictors}
 
 num_vars <- c("Temperature", "Humidity", "Wind Speed",
               "general diffuse flows", "diffuse flows")
 
 data_scaled <- data %>%
   mutate(across(all_of(num_vars), scale))
+```
 
-#--------------------------------------------------
-# 7. Time-Based Train/Test Split
-#--------------------------------------------------
-
+```{r Time-Based Train/Test Split}
 n <- nrow(data_scaled)
 train_end <- floor(0.8 * n)
 
 train <- data_scaled[1:train_end, ]
 test  <- data_scaled[(train_end + 1):n, ]
 
-###################################################
-# End of Preprocessing
-###################################################
-
-
 ```
-
-## Possible questions to address:
-
-- How well can we predict Zone 1, Zone 2, and Zone 3 power consumption using temperature, humidity, wind speed, general diffuse flows, diffuse flows, and time information?
-- Which variables are the most important drivers of power demand in each zone?
-- Do different zones behave differently, meaning should we build separate models for each zone instead of one combined model?
-- Does adding time based features, such as hour of day, day of week, or month, improve prediction accuracy beyond weather-only predictors?
-- Which method gives the best tradeoff between accuracy and interpretability for short-term electricity demand forecasting?
-
