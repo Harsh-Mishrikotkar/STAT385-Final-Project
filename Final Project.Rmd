@@ -119,3 +119,156 @@ train <- data_scaled[1:train_end, ]
 test  <- data_scaled[(train_end + 1):n, ]
 
 ```
+
+```{Baseline Models (Linear Regression)}
+
+## Convert categorical variables to factors
+train <- train %>%
+  mutate(
+    dow = as.factor(dow),
+    month = as.factor(month)
+  )
+test <- test %>%
+  mutate(
+    dow = as.factor(dow),
+    month = as.factor(month)
+  )
+
+## Linear Regression Models
+lm_z1 <- lm(Zone1 ~ Temperature + Humidity + `Wind Speed` +
+              `general diffuse flows` + `diffuse flows` +
+              hour + dow + month,
+            data = train)
+lm_z2 <- lm(Zone2 ~ Temperature + Humidity + `Wind Speed` +
+              `general diffuse flows` + `diffuse flows` +
+              hour + dow + month,
+            data = train)
+lm_z3 <- lm(Zone3 ~ Temperature + Humidity + `Wind Speed` +
+              `general diffuse flows` + `diffuse flows` +
+              hour + dow + month,
+            data = train)
+
+## Summaries 
+summary(lm_z1)
+summary(lm_z2)
+summary(lm_z3)
+
+```
+
+
+```{Improved Models}
+
+## 6A: Prepare Data for glmnet
+library(glmnet)
+x_train <- model.matrix(Zone1 ~ . - DateTime, data = train)[, -1]
+x_test  <- model.matrix(Zone1 ~ . - DateTime, data = test)[, -1]
+
+y1_train <- train$Zone1
+y2_train <- train$Zone2
+y3_train <- train$Zone3
+
+y1_test <- test$Zone1
+y2_test <- test$Zone2
+y3_test <- test$Zone3
+
+
+## 6B: Ridge, Lasso, Elastic Net
+ridge_z1 <- cv.glmnet(x_train, y1_train, alpha = 0)
+ridge_z2 <- cv.glmnet(x_train, y2_train, alpha = 0)
+ridge_z3 <- cv.glmnet(x_train, y3_train, alpha = 0)
+
+lasso_z1 <- cv.glmnet(x_train, y1_train, alpha = 1)
+lasso_z2 <- cv.glmnet(x_train, y2_train, alpha = 1)
+lasso_z3 <- cv.glmnet(x_train, y3_train, alpha = 1)
+
+enet_z1 <- cv.glmnet(x_train, y1_train, alpha = 0.5)
+enet_z2 <- cv.glmnet(x_train, y2_train, alpha = 0.5)
+enet_z3 <- cv.glmnet(x_train, y3_train, alpha = 0.5)
+
+
+## 6C: Random Forest
+n <- nrow(data_scaled)
+train_end <- floor(0.8 * n)
+train <- data_scaled[1:train_end, ]
+test  <- data_scaled[(train_end + 1):n, ]
+library(randomForest)
+rf_z1 <- randomForest(Zone1 ~ . - DateTime, data = train, ntree = 100)
+rf_z2 <- randomForest(Zone2 ~ . - DateTime, data = train, ntree = 100)
+rf_z3 <- randomForest(Zone3 ~ . - DateTime, data = train, ntree = 100)
+
+
+## 6D: Gradient Boosting
+library(xgboost)
+dtrain_z1 <- xgb.DMatrix(data = x_train, label = y1_train)
+dtest_z1  <- xgb.DMatrix(data = x_test,  label = y1_test)
+
+dtrain_z2 <- xgb.DMatrix(data = x_train, label = y2_train)
+dtest_z2  <- xgb.DMatrix(data = x_test,  label = y2_test)
+
+dtrain_z3 <- xgb.DMatrix(data = x_train, label = y3_train)
+dtest_z3  <- xgb.DMatrix(data = x_test,  label = y3_test)
+
+params <- list(
+  objective = "reg:squarederror",
+  max_depth = 6,
+  eta = 0.1
+)
+xgb_z1 <- xgb.train(
+  params = params,
+  data = dtrain_z1,
+  nrounds = 100
+)
+
+xgb_z2 <- xgb.train(
+  params = params,
+  data = dtrain_z2,
+  nrounds = 100
+)
+
+xgb_z3 <- xgb.train(
+  params = params,
+  data = dtrain_z3,
+  nrounds = 100
+)
+
+```
+
+
+```{Model Tuning(cross-validation)}
+
+## Ridge/Lasso/Elastic Net tuning
+ridge_z1$lambda.min
+lasso_z1$lambda.min
+enet_z1$lambda.min
+
+## Random Forest tuning
+tuneRF(
+  x = x_train,
+  y = y1_train,
+  ntreeTry = 100,
+  stepFactor = 1.5,
+  improve = 0.01
+)
+
+## XGBoost tuning (basic grid)
+library(caret)
+grid <- expand.grid(
+  nrounds = c(50, 100),
+  max_depth = c(4, 6, 8),
+  eta = c(0.05, 0.1),
+  gamma = 0,
+  colsample_bytree = 1,
+  min_child_weight = 1,
+  subsample = 1
+)
+train_control <- trainControl(method = "cv", number = 5)
+
+xgb_tuned <- train(
+  x = x_train,
+  y = y1_train,
+  method = "xgbTree",
+  trControl = train_control,
+  tuneGrid = grid
+)
+
+```
