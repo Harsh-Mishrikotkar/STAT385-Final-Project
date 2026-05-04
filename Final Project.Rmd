@@ -44,20 +44,19 @@ data <- data %>%
                "m/d/Y H:M:S")
   ))
 
-# Verify successful parsing
-sum(is.na(data$DateTime))   # Should be 0
-range(data$DateTime)        # Should show full 2017 range
+sum(is.na(data$DateTime))
+range(data$DateTime)
 ```
 
 ```{r Clean Column Names (Fix spacing issues)}
 data <- data %>%
   rename(
     Zone1 = `Zone 1 Power Consumption`,
-    Zone2 = `Zone 2  Power Consumption`,   # two spaces in original
-    Zone3 = `Zone 3  Power Consumption`,    # two spaces in original
-    Wind.Speed = 'Wind Speed',
-    General.Diffuse.Flows = 'general diffuse flows',
-    Diffuse.Flows = 'diffuse flows'
+    Zone2 = `Zone 2  Power Consumption`,
+    Zone3 = `Zone 3  Power Consumption`,
+    Wind.Speed = `Wind Speed`,
+    General.Diffuse.Flows = `general diffuse flows`,
+    Diffuse.Flows = `diffuse flows`
   )
 ```
 
@@ -73,7 +72,7 @@ data %>%
 
 ## 4b. Histograms for All Variables
 data %>%
-  select(Temperature, Humidity, `Wind.Speed`,
+  select(Temperature, Humidity, Wind.Speed,
          Zone1, Zone2, Zone3) %>%
   pivot_longer(everything(), names_to = "Variable", values_to = "Value") %>%
   ggplot(aes(Value)) +
@@ -91,8 +90,8 @@ data %>%
 
 ## 4d. Correlation Matrix
 data_corr <- data %>%
-  select(Temperature, Humidity, `Wind.Speed`,
-         `General.Diffuse.Flows`, `Diffuse.Flows`,
+  select(Temperature, Humidity, Wind.Speed,
+         General.Diffuse.Flows, Diffuse.Flows,
          Zone1, Zone2, Zone3)
 
 ggcorr(data_corr, label = TRUE)
@@ -103,15 +102,28 @@ ggcorr(data_corr, label = TRUE)
 data <- data %>%
   mutate(
     hour  = hour(DateTime),
-    dow   = wday(DateTime, label = TRUE, week_start = 1),
-    month = month(DateTime, label = TRUE)
+    dow   = wday(DateTime),        # numeric 1–7
+    month = month(DateTime),       # numeric 1–12
+
+    # Cyclical encoding
+    sin_hour  = sin(2 * pi * hour / 24),
+    cos_hour  = cos(2 * pi * hour / 24),
+    sin_month = sin(2 * pi * month / 12),
+    cos_month = cos(2 * pi * month / 12),
+    sin_dow   = sin(2 * pi * dow / 7),
+    cos_dow   = cos(2 * pi * dow / 7)
   )
 ```
 
 ```{r Standardize Numeric Predictors}
 
-num_vars <- c("Temperature", "Humidity", "Wind.Speed",
-              "General.Diffuse.Flows", "Diffuse.Flows")
+num_vars <- c(
+  "Temperature", "Humidity", "Wind.Speed",
+  "General.Diffuse.Flows", "Diffuse.Flows",
+  "sin_hour", "cos_hour",
+  "sin_month", "cos_month",
+  "sin_dow", "cos_dow"
+)
 
 data_scaled <- data %>%
   mutate(across(all_of(num_vars), scale))
