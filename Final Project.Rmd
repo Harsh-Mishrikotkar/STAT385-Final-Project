@@ -212,6 +212,9 @@ The dataset is split into training (80%) and testing (20%) sets using a time-bas
 
 ---
 
+# Section 6. Predictive Modeling
+
+In this section, we develop and compare multiple predictive models for forecasting power consumption in each zone. We begin with baseline linear regression models and progressively introduce more flexible machine learning approaches, including regularized regression, tree-based models, and gradient boosting. Model performance is evaluated using standard regression techniques, and cross-validation is used where appropriate to improve generalization.
 
 ```{r Baseline Models (Linear Regression)}
 
@@ -247,7 +250,9 @@ summary(lm_z2)
 summary(lm_z3)
 
 ```
+The linear regression summaries provide an initial understanding of how environmental and temporal variables influence power consumption across the three zones. While these models are interpretable, they may be limited in capturing nonlinear relationships present in the data.
 
+---
 
 ```{r Improved Models}
 
