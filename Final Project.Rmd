@@ -91,7 +91,19 @@ data %>%
   facet_wrap(~ Variable, scales = "free") +
   theme_minimal()
 
+There’s six histograms: Humidity, Temperature, Wind Speed, Zone 1, Zone 2, Zone 3.
 
+Both have bell‑shaped distributions, meaning they vary smoothly around typical weather conditions.
+Temperature ranges from ~3°C to ~40°C, showing clear seasonal spread.
+
+This suggests Tetouan experiences both calm periods and windy periods.
+
+Zone Power Consumption (1, 2, 3)
+All three zones have right‑skewed distributions.
+This means most consumption values are moderate and there are occasional high‑demand spikes.
+
+Skewed target variables may benefit from models that handle nonlinear relationships.
+Weather variables appear well‑behaved and suitable for regression.
 
 
 ## 4c. Boxplots for Zone Power Consumption
