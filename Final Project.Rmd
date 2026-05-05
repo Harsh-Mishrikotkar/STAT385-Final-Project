@@ -275,7 +275,6 @@ y1_test <- test$Zone1
 y2_test <- test$Zone2
 y3_test <- test$Zone3
 
-## Ridge, Lasso, Elastic Net
 ridge_z1 <- cv.glmnet(x_train, y1_train, alpha = 0)
 ridge_z2 <- cv.glmnet(x_train, y2_train, alpha = 0)
 ridge_z3 <- cv.glmnet(x_train, y3_train, alpha = 0)
@@ -295,7 +294,6 @@ Ridge regression helps reduce coefficient variance, while Lasso performs variabl
 We next apply Random Forest models, which are capable of capturing nonlinear relationships and interaction effects without requiring explicit feature engineering.
 
 ```{r Random Forest}
-## Random Forest
 n <- nrow(data_scaled)
 train_end <- floor(0.8 * n)
 train <- data_scaled[1:train_end, ]
@@ -305,10 +303,14 @@ rf_z1 <- randomForest(Zone1 ~ . - DateTime, data = train, ntree = 100)
 rf_z2 <- randomForest(Zone2 ~ . - DateTime, data = train, ntree = 100)
 rf_z3 <- randomForest(Zone3 ~ . - DateTime, data = train, ntree = 100)
 ```
+Random Forest models improve flexibility compared to linear models by averaging multiple decision trees, reducing variance and improving predictive accuracy.
 
+
+## 6.4 Gradient Boosting Models (XGBoost)
+
+To further improve predictive performance, we implement gradient boosting using XGBoost. This method builds models sequentially, where each new model corrects the errors of the previous ones.
 
 ```{r Gradient Boosting}
-## 6D: Gradient Boosting
 library(xgboost)
 dtrain_z1 <- xgb.DMatrix(data = x_train, label = y1_train)
 dtest_z1  <- xgb.DMatrix(data = x_test,  label = y1_test)
@@ -329,30 +331,29 @@ xgb_z1 <- xgb.train(
   data = dtrain_z1,
   nrounds = 100
 )
-
 xgb_z2 <- xgb.train(
   params = params,
   data = dtrain_z2,
   nrounds = 100
 )
-
 xgb_z3 <- xgb.train(
   params = params,
   data = dtrain_z3,
   nrounds = 100
 )
-
 ```
+XGBoost is expected to outperform simpler models due to its ability to model complex nonlinear interactions and iteratively minimize prediction error.
 
+
+## 6.5 Model Tuning and Cross-Validation
+
+To improve model performance and ensure robustness, we perform basic hyperparameter tuning using cross-validation techniques.
 
 ```{r Model Tuning(cross-validation)}
-
-## Ridge/Lasso/Elastic Net tuning
 ridge_z1$lambda.min
 lasso_z1$lambda.min
 enet_z1$lambda.min
 
-## Random Forest tuning
 tuneRF(
   x = x_train,
   y = y1_train,
@@ -361,7 +362,6 @@ tuneRF(
   improve = 0.01
 )
 
-## XGBoost tuning (basic grid)
 library(xgboost)
 dtrain <- xgb.DMatrix(data = x_train, label = y1_train)
 dtest  <- xgb.DMatrix(data = x_test,  label = y1_test)
@@ -376,8 +376,10 @@ xgb_model <- xgb.train(
   data = dtrain,
   nrounds = 100
 )
-
 ```
+The tuning process highlights optimal regularization parameters for linear models and explores suitable complexity levels for tree-based models. Lower learning rates and controlled tree depth generally improve generalization performance.
+
+---
 
 
 ```{r Part 8 - Model Evaluation, message=FALSE, warning=FALSE}
