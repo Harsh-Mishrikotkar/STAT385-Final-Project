@@ -61,6 +61,9 @@ data <- data %>%
 ```
 
 ```{r Exploratory Data Analysis}
+```
+
+```{r Time Series Plot for All Zones}
 ## 4a. Time Series Plot for All Zones
 data %>%
   select(DateTime, Zone1, Zone2, Zone3) %>%
@@ -69,6 +72,7 @@ data %>%
   geom_line(alpha = 0.4) +
   labs(title = "Power Consumption Over Time", y = "Power") +
   theme_minimal()
+```
 
 This line graph tracks power consumption for Zone 1, Zone 2, and Zone 3 across the entire year of 2017.  
 All three zones show repeating peaks and dips, indicating predictable usage patterns tied to human activity.  
@@ -80,7 +84,7 @@ This suggests different population densities or industrial loads.
 The clear temporal structure justifies adding hour, day of week, and month as predictors.  
 Models capturing nonlinear patterns (Random Forest, Boosting) may perform better than simple linear regression.
 
-
+```{r Histograms for All Variables}
 ## 4b. Histograms for All Variables
 data %>%
   select(Temperature, Humidity, Wind.Speed,
@@ -90,8 +94,9 @@ data %>%
   geom_histogram(bins = 30, fill = "steelblue", color = "white") +
   facet_wrap(~ Variable, scales = "free") +
   theme_minimal()
+```
 
-There’s six histograms: Humidity, Temperature, Wind Speed, Zone 1, Zone 2, Zone 3.
+There are six histograms: Humidity, Temperature, Wind Speed, Zone 1, Zone 2, Zone 3.
 
 Both have bell‑shaped distributions, meaning they vary smoothly around typical weather conditions.
 Temperature ranges from ~3°C to ~40°C, showing clear seasonal spread.
@@ -100,12 +105,12 @@ This suggests Tetouan experiences both calm periods and windy periods.
 
 Zone Power Consumption (1, 2, 3)
 All three zones have right‑skewed distributions.
-This means most consumption values are moderate and there are occasional high‑demand spikes.
+This means most consumption values are moderate, with occasional high‑demand spikes.
 
 Skewed target variables may benefit from models that handle nonlinear relationships.
 Weather variables appear well‑behaved and suitable for regression.
 
-
+```{r Boxplots for Zone Power Consumption}
 ## 4c. Boxplots for Zone Power Consumption
 data %>%
   select(Zone1, Zone2, Zone3) %>%
@@ -113,16 +118,17 @@ data %>%
   ggplot(aes(Zone, Power)) +
   geom_boxplot() +
   theme_minimal()
+```
 
-Zone 1 has the highest median and widest spread, largest and most variable demand.
+Zone 1 has the highest median and widest spread, the largest and most variable demand.
 Zone 2 is lower than Zone 1 but still substantial.
-Zone 3 has the lowest median and smallest spread.
+Zone 3 has the lowest median and the smallest spread.
 Outliers appear in Zone 2 and Zone 3, indicating occasional spikes.
 
 The zones differ significantly in their baseline consumption levels. This supports modeling each zone separately rather than combining them. 
 Different zones may require different model complexities or may respond differently to weather/time predictors. 
 
-
+```{r Correlation Matrix}
 ## 4d. Correlation Matrix
 data_corr <- data %>%
   select(Temperature, Humidity, Wind.Speed,
@@ -130,6 +136,7 @@ data_corr <- data %>%
          Zone1, Zone2, Zone3)
 
 ggcorr(data_corr, label = TRUE)
+```
 
 This heatmap shows pairwise correlations among weather variables and zone consumption. 
 
@@ -153,8 +160,6 @@ High correlation among zones suggests similar predictors will work for all three
 Correlated predictors (like the two diffuse flow variables) may cause multicollinearity in linear regression, LASSO/Ridge can help.
 Weather variables show meaningful relationships with power consumption, supporting their inclusion.
 
-
-```
 ---
 
 # Section 3. Feature Engineering
