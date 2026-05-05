@@ -109,6 +109,8 @@ data_corr <- data %>%
 ggcorr(data_corr, label = TRUE)
 ```
 
+# Section 3. Feature Engineering
+
 ```{r Feature Engineering}
 
 data <- data %>%
@@ -126,6 +128,9 @@ data <- data %>%
     cos_dow   = cos(2 * pi * dow / 7)
   )
 ```
+To capture temporal patterns more effectively, we extract features such as hour, day of week, and month from the datetime variable. These are then transformed using cyclical encoding (sine and cosine functions). This approach preserves the natural periodic structure of time (e.g., hour 23 is close to hour 0), which improves the ability of machine learning models to detect repeating patterns.
+
+# Section 4. Data Standardization
 
 ```{r Standardize Numeric Predictors}
 
@@ -140,7 +145,10 @@ num_vars <- c(
 data_scaled <- data %>%
   mutate(across(all_of(num_vars), scale))
 ```
+All numerical predictors are standardized to have mean 0 and standard deviation 1. This ensures that variables are on a comparable scale, which is particularly important for models sensitive to feature magnitude, such as regression and distance-based algorithms.
 
+
+Section 5. Train-Test Split
 ```{r Time-Based Train/Test Split}
 n <- nrow(data_scaled)
 train_end <- floor(0.8 * n)
@@ -149,6 +157,8 @@ train <- data_scaled[1:train_end, ]
 test  <- data_scaled[(train_end + 1):n, ]
 
 ```
+The dataset is split into training (80%) and testing (20%) sets using a time-based split rather than random sampling. This approach preserves the chronological order of observations and prevents data leakage, ensuring that the model is evaluated on future data rather than past observations.
+
 
 ```{r Baseline Models (Linear Regression)}
 
