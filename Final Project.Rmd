@@ -114,6 +114,15 @@ data %>%
   geom_boxplot() +
   theme_minimal()
 
+Zone 1 has the highest median and widest spread, largest and most variable demand.
+Zone 2 is lower than Zone 1 but still substantial.
+Zone 3 has the lowest median and smallest spread.
+Outliers appear in Zone 2 and Zone 3, indicating occasional spikes.
+
+The zones differ significantly in their baseline consumption levels. This supports modeling each zone separately rather than combining them. 
+Different zones may require different model complexities or may respond differently to weather/time predictors. 
+
+
 ## 4d. Correlation Matrix
 data_corr <- data %>%
   select(Temperature, Humidity, Wind.Speed,
@@ -121,6 +130,30 @@ data_corr <- data %>%
          Zone1, Zone2, Zone3)
 
 ggcorr(data_corr, label = TRUE)
+
+This heatmap shows pairwise correlations among weather variables and zone consumption. 
+
+Strong positive correlations:
+Zone 1 - Zone 2 - Zone 3 (0.7–0.8)
+All zones rise and fall together — likely due to shared city‑wide activity patterns.
+
+Temperature vs. Humidity:
+Moderately negative correlation (~–0.5).
+Hotter days tend to be less humid.
+
+Diffuse flows vs. general diffuse flows:
+Very strong positive correlation.
+These two solar radiation measures move together.
+
+Temperature vs. Power Consumption:
+Mild positive correlation.
+Warmer weather increases electricity use (likely cooling).
+
+High correlation among zones suggests similar predictors will work for all three.
+Correlated predictors (like the two diffuse flow variables) may cause multicollinearity in linear regression, LASSO/Ridge can help.
+Weather variables show meaningful relationships with power consumption, supporting their inclusion.
+
+
 ```
 ---
 
