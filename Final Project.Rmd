@@ -257,11 +257,12 @@ summary(lm_z3)
 ```
 The linear regression summaries provide an initial understanding of how environmental and temporal variables influence power consumption across the three zones. While these models are interpretable, they may be limited in capturing nonlinear relationships present in the data.
 
----
+## 6.2 Regularized Regression Models (Ridge, Lasso, Elastic Net)
+
+To address potential multicollinearity and improve predictive performance, we apply regularized regression methods using the glmnet framework. These methods introduce penalty terms that shrink coefficients and help prevent overfitting.
 
 ```{r Improved Models}
-
-## 6A: Prepare Data for glmnet
+## Prepare Data for glmnet
 library(glmnet)
 x_train <- model.matrix(Zone1 ~ . - DateTime, data = train)[, -1]
 x_test  <- model.matrix(Zone1 ~ . - DateTime, data = test)[, -1]
@@ -274,8 +275,7 @@ y1_test <- test$Zone1
 y2_test <- test$Zone2
 y3_test <- test$Zone3
 
-
-## 6B: Ridge, Lasso, Elastic Net
+## Ridge, Lasso, Elastic Net
 ridge_z1 <- cv.glmnet(x_train, y1_train, alpha = 0)
 ridge_z2 <- cv.glmnet(x_train, y2_train, alpha = 0)
 ridge_z3 <- cv.glmnet(x_train, y3_train, alpha = 0)
@@ -287,9 +287,15 @@ lasso_z3 <- cv.glmnet(x_train, y3_train, alpha = 1)
 enet_z1 <- cv.glmnet(x_train, y1_train, alpha = 0.5)
 enet_z2 <- cv.glmnet(x_train, y2_train, alpha = 0.5)
 enet_z3 <- cv.glmnet(x_train, y3_train, alpha = 0.5)
+```
+Ridge regression helps reduce coefficient variance, while Lasso performs variable selection by shrinking some coefficients to zero. Elastic Net combines both approaches, balancing shrinkage and sparsity.
 
 
-## 6C: Random Forest
+## 6.3 Random Forest Models
+We next apply Random Forest models, which are capable of capturing nonlinear relationships and interaction effects without requiring explicit feature engineering.
+
+```{r Random Forest}
+## Random Forest
 n <- nrow(data_scaled)
 train_end <- floor(0.8 * n)
 train <- data_scaled[1:train_end, ]
@@ -298,8 +304,10 @@ library(randomForest)
 rf_z1 <- randomForest(Zone1 ~ . - DateTime, data = train, ntree = 100)
 rf_z2 <- randomForest(Zone2 ~ . - DateTime, data = train, ntree = 100)
 rf_z3 <- randomForest(Zone3 ~ . - DateTime, data = train, ntree = 100)
+```
 
 
+```{r Gradient Boosting}
 ## 6D: Gradient Boosting
 library(xgboost)
 dtrain_z1 <- xgb.DMatrix(data = x_train, label = y1_train)
