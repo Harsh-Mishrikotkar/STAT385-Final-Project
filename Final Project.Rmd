@@ -344,10 +344,10 @@ xgb_z3 <- xgb.train(
 ```
 XGBoost is expected to outperform simpler models due to its ability to model complex nonlinear interactions and iteratively minimize prediction error.
 
+---
+# Section 7. Model Tuning and Cross-Validation
 
-## 6.5 Model Tuning and Cross-Validation
-
-To improve model performance and ensure robustness, we perform basic hyperparameter tuning using cross-validation techniques.
+To improve predictive performance and ensure model robustness, we perform hyperparameter tuning and cross-validation across multiple model types.
 
 ```{r Model Tuning(cross-validation)}
 ridge_z1$lambda.min
@@ -377,7 +377,7 @@ xgb_model <- xgb.train(
   nrounds = 100
 )
 ```
-The tuning process highlights optimal regularization parameters for linear models and explores suitable complexity levels for tree-based models. Lower learning rates and controlled tree depth generally improve generalization performance.
+The tuning process highlights how each model responds to parameter adjustments. Regularized regression models rely heavily on optimal lambda selection, while tree-based methods benefit from controlling depth and learning rate. Overall, careful tuning improves generalization and reduces overfitting across all model types.
 
 ---
 
