@@ -80,6 +80,7 @@ data %>%
   facet_wrap(~ Variable, scales = "free") +
   theme_minimal()
 
+```{r setup, include=FALSE}
 ##This line graph tracks power consumption for Zone 1, Zone 2, and Zone 3 across the entire year of 2017. 
 ##All three zones show repeating peaks and dips, indicating predictable usage patterns tied to human activity (morning/evening peaks, lower usage at night). 
 ##There are noticeable increases during mid‑year (summer months), likely due to cooling demand. 
@@ -88,7 +89,7 @@ data %>%
 ##Zone 3 is the lowest.
 ##This suggests different population densities or industrial loads.
 ##The clear temporal structure justifies adding hour, day of week, and month as predictors. It also suggests that models capturing nonlinear patterns (Random Forest, ##Boosting) may perform better than simple linear regression. 
-
+```
 
 ## 4c. Boxplots for Zone Power Consumption
 data %>%
