@@ -216,6 +216,11 @@ The dataset is split into training (80%) and testing (20%) sets using a time-bas
 
 In this section, we develop and compare multiple predictive models for forecasting power consumption in each zone. We begin with baseline linear regression models and progressively introduce more flexible machine learning approaches, including regularized regression, tree-based models, and gradient boosting. Model performance is evaluated using standard regression techniques, and cross-validation is used where appropriate to improve generalization.
 
+## 6.1 Baseline Linear Regression Models
+
+Before applying more complex machine learning techniques, we first construct baseline multiple linear regression models for each zone. These models serve as a benchmark for evaluating whether more advanced methods provide meaningful improvements.
+Categorical variables such as day of week and month are converted into factors to ensure correct treatment in the regression framework.
+
 ```{r Baseline Models (Linear Regression)}
 
 ## Convert categorical variables to factors
