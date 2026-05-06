@@ -1,4 +1,9 @@
 ## Power Consumption Forecasting Project
+
+## Final Report
+
+**[Click here to view the full report](Final-Project.pdf)**
+
 1. Project goal
 	- Predict the power consumption of Tetouan City using weather, flow, and time-based variables, then compare several statistical and machine learning models to see which works best.
 	- We will build separate models for Zone 1, Zone 2, and Zone 3, because each zone has its own consumption target.
