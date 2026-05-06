@@ -17,20 +17,17 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(
-  echo = FALSE,
-  cache = TRUE
-)
+knitr::opts_chunk$set(echo = FALSE,
+                      cache = TRUE)
 library(tidyverse)
 library(lubridate)
 library(GGally)
 library(dplyr)
 library(tibble)
 library(Metrics)
-library(glmnet)
-library(purrr)
 ```
 
+# Section 1: Data Setup, Cleaning and Processing
 
 ```{r Load and Inspect Data}
 #setwd("C:/Users/yasmi/OneDrive/Desktop/Final Project")
@@ -74,6 +71,8 @@ data <- data %>%
   )
 ```
 
+```{r Exploratory Data Analysis}
+```
 
 ```{r Time Series Plot for All Zones}
 ## 4a. Time Series Plot for All Zones
@@ -154,7 +153,7 @@ This heatmap shows pairwise correlations among weather variables and zone consum
 
 Strong positive correlations:
 Zone 1 - Zone 2 - Zone 3 (0.7–0.8)
-All zones rise and fall together — likely due to shared city‑wide activity patterns.
+All zones rise and fall together - likely due to shared city‑wide activity patterns.
 
 Temperature vs. Humidity:
 Moderately negative correlation (~–0.5).
@@ -172,9 +171,9 @@ High correlation among zones suggests similar predictors will work for all three
 Correlated predictors (like the two diffuse flow variables) may cause multicollinearity in linear regression, LASSO/Ridge can help.
 Weather variables show meaningful relationships with power consumption, supporting their inclusion.
 
----
 
-# Section 3. Feature Engineering
+
+# Section 2: Feature Engineering
 
 ```{r Feature Engineering}
 
@@ -195,9 +194,9 @@ data <- data %>%
 ```
 To capture temporal patterns more effectively, we extract features such as hour, day of week, and month from the datetime variable. These are then transformed using cyclical encoding (sine and cosine functions). This approach preserves the natural periodic structure of time (e.g., hour 23 is close to hour 0), which improves the ability of machine learning models to detect repeating patterns.
 
----
 
-# Section 4. Data Standardization
+
+# Section 3: Data Standardization
 
 ```{r Standardize Numeric Predictors}
 
@@ -214,9 +213,9 @@ data_scaled <- data %>%
 ```
 All numerical predictors are standardized to have mean 0 and standard deviation 1. This ensures that variables are on a comparable scale, which is particularly important for models sensitive to feature magnitude, such as regression and distance-based algorithms.
 
----
 
-Section 5. Train-Test Split
+
+Section 4. Train-Test Split
 ```{r Time-Based Train/Test Split}
 n <- nrow(data_scaled)
 train_end <- floor(0.8 * n)
@@ -227,13 +226,13 @@ test  <- data_scaled[(train_end + 1):n, ]
 ```
 The dataset is split into training (80%) and testing (20%) sets using a time-based split rather than random sampling. This approach preserves the chronological order of observations and prevents data leakage, ensuring that the model is evaluated on future data rather than past observations.
 
----
 
-# Section 6. Predictive Modeling
+
+# Section 4: Predictive Modeling
 
 In this section, we develop and compare multiple predictive models for forecasting power consumption in each zone. We begin with baseline linear regression models and progressively introduce more flexible machine learning approaches, including regularized regression, tree-based models, and gradient boosting. Model performance is evaluated using standard regression techniques, and cross-validation is used where appropriate to improve generalization.
 
-## 6.1 Baseline Linear Regression Models
+## 4.1 Baseline Linear Regression Models
 
 Before applying more complex machine learning techniques, we first construct baseline multiple linear regression models for each zone. These models serve as a benchmark for evaluating whether more advanced methods provide meaningful improvements.
 Categorical variables such as day of week and month are converted into factors to ensure correct treatment in the regression framework.
@@ -274,7 +273,7 @@ summary(lm_z3)
 ```
 The linear regression summaries provide an initial understanding of how environmental and temporal variables influence power consumption across the three zones. While these models are interpretable, they may be limited in capturing nonlinear relationships present in the data.
 
-## 6.2 Regularized Regression Models (Ridge, Lasso, Elastic Net)
+## 4.2 Regularized Regression Models (Ridge, Lasso, Elastic Net)
 
 To address potential multicollinearity and improve predictive performance, we apply regularized regression methods using the glmnet framework. These methods introduce penalty terms that shrink coefficients and help prevent overfitting.
 
@@ -307,7 +306,7 @@ enet_z3 <- cv.glmnet(x_train, y3_train, alpha = 0.5)
 Ridge regression helps reduce coefficient variance, while Lasso performs variable selection by shrinking some coefficients to zero. Elastic Net combines both approaches, balancing shrinkage and sparsity.
 
 
-## 6.3 Random Forest Models
+## 4.3 Random Forest Models
 We next apply Random Forest models, which are capable of capturing nonlinear relationships and interaction effects without requiring explicit feature engineering.
 
 ```{r Random Forest}
@@ -323,7 +322,7 @@ rf_z3 <- randomForest(Zone3 ~ . - DateTime, data = train, ntree = 100)
 Random Forest models improve flexibility compared to linear models by averaging multiple decision trees, reducing variance and improving predictive accuracy.
 
 
-## 6.4 Gradient Boosting Models (XGBoost)
+## 4.4 Gradient Boosting Models (XGBoost)
 
 To further improve predictive performance, we implement gradient boosting using XGBoost. This method builds models sequentially, where each new model corrects the errors of the previous ones.
 
@@ -362,8 +361,8 @@ xgb_z3 <- xgb.train(
 XGBoost is expected to outperform simpler models due to its ability to model complex nonlinear interactions and iteratively minimize prediction error.
 
 
----
-# Section 7. Model Tuning and Cross-Validation
+
+# Section 5: Model Tuning and Cross-Validation
 
 To improve predictive performance and ensure model robustness, we perform hyperparameter tuning and cross-validation across multiple model types.
 
@@ -397,354 +396,557 @@ xgb_model <- xgb.train(
 ```
 The tuning process highlights how each model responds to parameter adjustments. Regularized regression models rely heavily on optimal lambda selection, while tree-based methods benefit from controlling depth and learning rate. Overall, careful tuning improves generalization and reduces overfitting across all model types.
 
----
 
 
-# Section 8. Model Evaluation
+# Section 6: Model Evaluation
 
-In this section we generate predictions from all fitted models on the held-out test set and compare them using three standard regression metrics: Root Mean Squared Error (RMSE), Mean Absolute Error (MAE), and R².
+```{r model-comparison-table}
+library(knitr)
+library(glmnet)
+library(xgboost)
 
-```{r Part 8 - Refit LM with Complete Factor Levels, message=FALSE, warning=FALSE}
+# Rebuild numeric matrices (avoids factor dummy mismatch from earlier chunks)
+num_predictors <- c("Temperature", "Humidity", "Wind.Speed",
+                    "General.Diffuse.Flows", "Diffuse.Flows",
+                    "hour", "dow", "month",
+                    "sin_hour", "cos_hour",
+                    "sin_month", "cos_month",
+                    "sin_dow", "cos_dow")
 
-# ── WHY THIS REFIT IS NECESSARY ─────────────────────────────────────────────
-# The 80/20 time-based split places November and December entirely in the test
-# set. The baseline chunk used as.factor(month), which only registers the
-# levels present in training data (months 1–10). Predicting on months 11–12
-# triggers "factor month has new levels 11, 12".
-#
-# Fix: rebuild train_lm / test_lm from data_scaled with factor() declaring
-# ALL possible levels upfront (1:12 for month, 1:7 for dow). Then refit the
-# three lm models. Formula and training rows are identical to Part 6 —
-# only the declared factor levels change.
+x_train_s8 <- as.matrix(train[, num_predictors])
+x_test_s8  <- as.matrix(test[,  num_predictors])
 
-train_lm <- data_scaled[1:train_end, ] %>%
-  mutate(
-    dow   = factor(dow,   levels = 1:7),
-    month = factor(month, levels = 1:12)
-  )
+# Rebuild dtest DMatrix objects (C++ pointers don't persist across chunks)
+dtest_z1 <- xgb.DMatrix(data = x_test_s8, label = y1_test)
+dtest_z2 <- xgb.DMatrix(data = x_test_s8, label = y2_test)
+dtest_z3 <- xgb.DMatrix(data = x_test_s8, label = y3_test)
 
-test_lm <- data_scaled[(train_end + 1):nrow(data_scaled), ] %>%
-  mutate(
-    dow   = factor(dow,   levels = 1:7),
-    month = factor(month, levels = 1:12)
-  )
+# Refit glmnet models on clean numeric matrix
+ridge_z1 <- cv.glmnet(x_train_s8, y1_train, alpha = 0)
+ridge_z2 <- cv.glmnet(x_train_s8, y2_train, alpha = 0)
+ridge_z3 <- cv.glmnet(x_train_s8, y3_train, alpha = 0)
 
-lm_z1 <- lm(Zone1 ~ Temperature + Humidity + Wind.Speed +
-               General.Diffuse.Flows + Diffuse.Flows +
-               hour + dow + month,
-             data = train_lm)
+lasso_z1 <- cv.glmnet(x_train_s8, y1_train, alpha = 1)
+lasso_z2 <- cv.glmnet(x_train_s8, y2_train, alpha = 1)
+lasso_z3 <- cv.glmnet(x_train_s8, y3_train, alpha = 1)
 
-lm_z2 <- lm(Zone2 ~ Temperature + Humidity + Wind.Speed +
-               General.Diffuse.Flows + Diffuse.Flows +
-               hour + dow + month,
-             data = train_lm)
+enet_z1 <- cv.glmnet(x_train_s8, y1_train, alpha = 0.5)
+enet_z2 <- cv.glmnet(x_train_s8, y2_train, alpha = 0.5)
+enet_z3 <- cv.glmnet(x_train_s8, y3_train, alpha = 0.5)
 
-lm_z3 <- lm(Zone3 ~ Temperature + Humidity + Wind.Speed +
-               General.Diffuse.Flows + Diffuse.Flows +
-               hour + dow + month,
-             data = train_lm)
-```
-
-```{r Part 8 - Model Evaluation, message=FALSE, warning=FALSE}
-
-# ── Metric helper ────────────────────────────────────────────────────────────
-eval_metrics <- function(actual, predicted, model_name, zone) {
+# Metrics helper
+metrics <- function(actual, pred, model, zone) {
   tibble(
-    Model = model_name,
-    Zone  = zone,
-    RMSE  = sqrt(mean((actual - predicted)^2)),
-    MAE   = mean(abs(actual - predicted)),
-    R2    = 1 - sum((actual - predicted)^2) /
-                sum((actual - mean(actual))^2)
+    Model = model, Zone = zone,
+    RMSE  = round(sqrt(mean((actual - pred)^2)), 2),
+    MAE   = round(mean(abs(actual - pred)), 2),
+    R2    = round(1 - sum((actual - pred)^2) / sum((actual - mean(actual))^2), 4)
   )
 }
 
-# ── Predictions ──────────────────────────────────────────────────────────────
-
-## Linear Regression  (test_lm has complete factor levels — no crash)
-pred_lm_z1 <- predict(lm_z1, newdata = test_lm)
-pred_lm_z2 <- predict(lm_z2, newdata = test_lm)
-pred_lm_z3 <- predict(lm_z3, newdata = test_lm)
-
-## Ridge
-pred_ridge_z1 <- as.vector(predict(ridge_z1, newx = x_test, s = "lambda.min"))
-pred_ridge_z2 <- as.vector(predict(ridge_z2, newx = x_test, s = "lambda.min"))
-pred_ridge_z3 <- as.vector(predict(ridge_z3, newx = x_test, s = "lambda.min"))
-
-## Lasso
-pred_lasso_z1 <- as.vector(predict(lasso_z1, newx = x_test, s = "lambda.min"))
-pred_lasso_z2 <- as.vector(predict(lasso_z2, newx = x_test, s = "lambda.min"))
-pred_lasso_z3 <- as.vector(predict(lasso_z3, newx = x_test, s = "lambda.min"))
-
-## Elastic Net
-pred_enet_z1 <- as.vector(predict(enet_z1, newx = x_test, s = "lambda.min"))
-pred_enet_z2 <- as.vector(predict(enet_z2, newx = x_test, s = "lambda.min"))
-pred_enet_z3 <- as.vector(predict(enet_z3, newx = x_test, s = "lambda.min"))
-
-## Random Forest  (test = unfactored post-RF-resplit version)
-pred_rf_z1 <- predict(rf_z1, newdata = test)
-pred_rf_z2 <- predict(rf_z2, newdata = test)
-pred_rf_z3 <- predict(rf_z3, newdata = test)
-
-## XGBoost
-pred_xgb_z1 <- predict(xgb_z1, newdata = dtest_z1)
-pred_xgb_z2 <- predict(xgb_z2, newdata = dtest_z2)
-pred_xgb_z3 <- predict(xgb_z3, newdata = dtest_z3)
-
-# ── Full comparison table ────────────────────────────────────────────────────
 results <- bind_rows(
   # Zone 1
-  eval_metrics(y1_test, pred_lm_z1,    "Linear Regression", "Zone 1"),
-  eval_metrics(y1_test, pred_ridge_z1, "Ridge",             "Zone 1"),
-  eval_metrics(y1_test, pred_lasso_z1, "Lasso",             "Zone 1"),
-  eval_metrics(y1_test, pred_enet_z1,  "Elastic Net",       "Zone 1"),
-  eval_metrics(y1_test, pred_rf_z1,    "Random Forest",     "Zone 1"),
-  eval_metrics(y1_test, pred_xgb_z1,   "XGBoost",           "Zone 1"),
+  metrics(y1_test, as.vector(predict(ridge_z1, newx = x_test_s8, s = "lambda.min")), "Ridge",         "Zone 1"),
+  metrics(y1_test, as.vector(predict(lasso_z1, newx = x_test_s8, s = "lambda.min")), "Lasso",         "Zone 1"),
+  metrics(y1_test, as.vector(predict(enet_z1,  newx = x_test_s8, s = "lambda.min")), "Elastic Net",   "Zone 1"),
+  metrics(y1_test, predict(rf_z1,  newdata = test),                                  "Random Forest", "Zone 1"),
+  metrics(y1_test, predict(xgb_z1, newdata = dtest_z1),                              "XGBoost",       "Zone 1"),
+
   # Zone 2
-  eval_metrics(y2_test, pred_lm_z2,    "Linear Regression", "Zone 2"),
-  eval_metrics(y2_test, pred_ridge_z2, "Ridge",             "Zone 2"),
-  eval_metrics(y2_test, pred_lasso_z2, "Lasso",             "Zone 2"),
-  eval_metrics(y2_test, pred_enet_z2,  "Elastic Net",       "Zone 2"),
-  eval_metrics(y2_test, pred_rf_z2,    "Random Forest",     "Zone 2"),
-  eval_metrics(y2_test, pred_xgb_z2,   "XGBoost",           "Zone 2"),
+  metrics(y2_test, as.vector(predict(ridge_z2, newx = x_test_s8, s = "lambda.min")), "Ridge",         "Zone 2"),
+  metrics(y2_test, as.vector(predict(lasso_z2, newx = x_test_s8, s = "lambda.min")), "Lasso",         "Zone 2"),
+  metrics(y2_test, as.vector(predict(enet_z2,  newx = x_test_s8, s = "lambda.min")), "Elastic Net",   "Zone 2"),
+  metrics(y2_test, predict(rf_z2,  newdata = test),                                  "Random Forest", "Zone 2"),
+  metrics(y2_test, predict(xgb_z2, newdata = dtest_z2),                              "XGBoost",       "Zone 2"),
+
   # Zone 3
-  eval_metrics(y3_test, pred_lm_z3,    "Linear Regression", "Zone 3"),
-  eval_metrics(y3_test, pred_ridge_z3, "Ridge",             "Zone 3"),
-  eval_metrics(y3_test, pred_lasso_z3, "Lasso",             "Zone 3"),
-  eval_metrics(y3_test, pred_enet_z3,  "Elastic Net",       "Zone 3"),
-  eval_metrics(y3_test, pred_rf_z3,    "Random Forest",     "Zone 3"),
-  eval_metrics(y3_test, pred_xgb_z3,   "XGBoost",           "Zone 3")
-) %>%
-  mutate(across(c(RMSE, MAE, R2), ~ round(.x, 4)))
-
-print(results)
-```
-
-The table above reports RMSE, MAE, and R² for all six models across all three zones evaluated on the same held-out 20% test set. Lower RMSE and MAE indicate better accuracy; higher R² indicates stronger explanatory power.
-
-```{r Part 8 - RMSE Comparison Plot, fig.width=10, fig.height=4.5}
-
-results %>%
-  mutate(Model = factor(Model,
-                        levels = c("Linear Regression", "Ridge", "Lasso",
-                                   "Elastic Net", "Random Forest", "XGBoost"))) %>%
-  ggplot(aes(x = Model, y = RMSE, fill = Model)) +
-  geom_col(width = 0.7, show.legend = FALSE) +
-  facet_wrap(~ Zone, scales = "free_y") +
-  scale_fill_brewer(palette = "Set2") +
-  labs(
-    title = "Test Set RMSE by Model and Zone",
-    x     = NULL,
-    y     = "RMSE"
-  ) +
-  theme_minimal(base_size = 11) +
-  theme(axis.text.x = element_text(angle = 38, hjust = 1))
-```
-
-The chart makes it easy to compare model families side by side within each zone. Tree-based models (Random Forest and XGBoost) are expected to show the shortest bars, reflecting their ability to capture nonlinear relationships and temporal patterns that simpler regression approaches cannot model.
-
----
-
-# Section 9. Interpretation of Results
-
-## 9.1 Best Model Per Zone
-
-```{r Part 9 - Best Model, message=FALSE, warning=FALSE}
-
-best_models <- results %>%
-  group_by(Zone) %>%
-  slice_min(RMSE, n = 1) %>%
-  ungroup() %>%
-  select(Zone, Model, RMSE, MAE, R2)
-
-print(best_models)
-```
-
-The best-performing model is identified per zone based on test-set RMSE. If tree-based models win across all three zones, this confirms that power consumption has meaningful nonlinear structure that linear regression cannot fully capture.
-
-## 9.2 Linear Model Coefficients
-
-```{r Part 9 - LM Coefficients, message=FALSE, warning=FALSE}
-
-library(broom)
-
-# Coefficients ranked by absolute magnitude for Zone 1
-# (Zone 2 and Zone 3 follow the same interpretation pattern)
-lm_coef_z1 <- tidy(lm_z1, conf.int = TRUE) %>%
-  filter(term != "(Intercept)") %>%
-  mutate(Significant = p.value < 0.05) %>%
-  arrange(desc(abs(estimate)))
-
-cat("=== Linear Regression Coefficients — Zone 1 (ranked by |estimate|) ===\n")
-print(head(lm_coef_z1, 12))
-```
-
-```{r Part 9 - Coefficient Plot, fig.width=9, fig.height=5.5}
-
-tidy(lm_z1, conf.int = TRUE) %>%
-  filter(term != "(Intercept)") %>%
-  mutate(
-    Significant = ifelse(p.value < 0.05, "p < 0.05", "p >= 0.05"),
-    term        = reorder(term, estimate)
-  ) %>%
-  ggplot(aes(x = term, y = estimate,
-             ymin = conf.low, ymax = conf.high,
-             color = Significant)) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "gray60") +
-  geom_pointrange(size = 0.45) +
-  coord_flip() +
-  scale_color_manual(
-    values = c("p < 0.05" = "#2166ac", "p >= 0.05" = "#b2b2b2")
-  ) +
-  labs(
-    title    = "Linear Regression Coefficients — Zone 1",
-    subtitle = "Blue = statistically significant (p < 0.05); bars show 95% CI",
-    x        = NULL,
-    y        = "Coefficient Estimate",
-    color    = NULL
-  ) +
-  theme_minimal(base_size = 11)
-```
-
-The coefficient plot reveals which predictors reliably increase or decrease Zone 1 consumption. Predictors whose confidence intervals do not cross the dashed zero line are statistically significant.
-
-## 9.3 Lasso Variable Selection
-
-```{r Part 9 - Lasso Coefficients, message=FALSE, warning=FALSE}
-
-# Lasso sets irrelevant coefficients exactly to zero.
-# Retained terms are the variables it considers most useful for prediction.
-extract_lasso_coef <- function(model, zone_label) {
-  coef(model, s = "lambda.min") %>%
-    as.matrix() %>%
-    as.data.frame() %>%
-    rownames_to_column("Variable") %>%
-    rename(Coefficient = s1) %>%
-    filter(Variable != "(Intercept)", Coefficient != 0) %>%
-    mutate(Zone = zone_label) %>%
-    arrange(desc(abs(Coefficient)))
-}
-
-lasso_coef_all <- bind_rows(
-  extract_lasso_coef(lasso_z1, "Zone 1"),
-  extract_lasso_coef(lasso_z2, "Zone 2"),
-  extract_lasso_coef(lasso_z3, "Zone 3")
+  metrics(y3_test, as.vector(predict(ridge_z3, newx = x_test_s8, s = "lambda.min")), "Ridge",         "Zone 3"),
+  metrics(y3_test, as.vector(predict(lasso_z3, newx = x_test_s8, s = "lambda.min")), "Lasso",         "Zone 3"),
+  metrics(y3_test, as.vector(predict(enet_z3,  newx = x_test_s8, s = "lambda.min")), "Elastic Net",   "Zone 3"),
+  metrics(y3_test, predict(rf_z3,  newdata = test),                                  "Random Forest", "Zone 3"),
+  metrics(y3_test, predict(xgb_z3, newdata = dtest_z3),                              "XGBoost",       "Zone 3")
 )
 
-print(lasso_coef_all)
+
 ```
 
-Variables retained by Lasso after shrinkage represent the most informative predictors for each zone. Variables dropped (coefficient shrunk to zero) have little marginal predictive value once others are included.
+The performance of all models was evaluated using the same test dataset for each zone. The primary metrics used for comparison were Root Mean Squared Error (RMSE), Mean Absolute Error (MAE), and R-squared (R²). Lower RMSE and MAE indicate better predictive accuracy, while higher R² indicates better explanatory power.
 
-## 9.4 Random Forest Variable Importance
+## Zone 1
 
-```{r Part 9 - RF Importance, message=FALSE, warning=FALSE}
 
-# IncNodePurity: mean decrease in node impurity across all trees.
-# Available regardless of whether importance = TRUE was passed to randomForest().
-extract_rf_imp <- function(model, zone_label) {
-  importance(model) %>%
-    as.data.frame() %>%
-    rownames_to_column("Variable") %>%
-    rename(Importance = IncNodePurity) %>%
-    mutate(Zone = zone_label) %>%
-    arrange(desc(Importance))
+```{r zone1-table, echo=FALSE}
+kable(
+  results %>% filter(Zone == "Zone 1") %>% select(-Zone) %>% arrange(RMSE),
+  caption = "Model Comparison - Zone 1",
+  col.names = c("Model", "RMSE", "MAE", "R²")
+)
+```
+For Zone 1, the regularized linear models performed the best. The Elastic Net model achieved the lowest RMSE (3124.85) and highest R² (0.7432), closely followed by the Lasso model. Ridge regression performed moderately worse, while the Random Forest model showed a noticeable drop in performance. The XGBoost model performed the worst, with a negative R², indicating that it performed worse than simply predicting the mean.
+
+Overall, the results suggest that the relationship between predictors and power consumption in Zone 1 is relatively well-captured by linear models with regularization. The minimal difference between Elastic Net and Lasso indicates that feature selection and shrinkage both contribute similarly in this case.
+
+## Zone 2
+
+```{r zone2-table, echo=FALSE}
+kable(
+  results %>% filter(Zone == "Zone 2") %>% select(-Zone) %>% arrange(RMSE),
+  caption = "Model Comparison - Zone 2",
+  col.names = c("Model", "RMSE", "MAE", "R²")
+)
+```
+
+The results for Zone 2 differ significantly from Zone 1. The Random Forest model achieved the best performance, with the lowest RMSE (5061.52) and the only positive R² (0.1481). All linear and regularized regression models produced negative R² values, indicating poor predictive performance.
+
+XGBoost performed extremely poorly, with a very high RMSE and strongly negative R², suggesting either poor tuning or that the model failed to capture the underlying structure of the data.
+
+These results imply that the relationship between predictors and power consumption in Zone 2 is likely nonlinear and not well captured by linear models. However, even the best-performing model (Random Forest) shows relatively weak predictive power, indicating that important explanatory variables may be missing.
+
+## Zone 3
+
+```{r zone3-table, echo=FALSE}
+kable(
+  results %>% filter(Zone == "Zone 3") %>% select(-Zone) %>% arrange(RMSE),
+  caption = "Model Comparison - Zone 3",
+  col.names = c("Model", "RMSE", "MAE", "R²")
+)
+
+```
+
+All models performed poorly for Zone 3, with every model producing negative R² values. The XGBoost model achieved the lowest RMSE (4792.20), but still had a negative R², indicating that its predictions were worse than a simple mean-based model.
+
+Random Forest and Ridge regression followed closely behind, but none of the models demonstrated meaningful predictive capability. Elastic Net and Lasso performed especially poorly, with very large errors and extremely negative R² values.
+
+These results suggest that the current feature set fails to adequately explain power consumption in Zone 3. This could be due to missing variables, higher noise levels, or more complex dynamics that are not captured by the models used.
+
+## Overall Comparison
+
+Across all three zones, model performance varies substantially:
+
+- Zone 1: Best modeled by regularized linear models (Elastic Net / Lasso)
+- Zone 2: Best modeled by Random Forest, suggesting nonlinear relationships
+- Zone 3: No model performs well, indicating a lack of predictive structure in the current data
+
+A key takeaway is that no single model performs best across all zones, reinforcing the decision to model each zone separately.
+
+# Section 7: Interpretation of Results
+
+## 7.1 Importance of Model Choice
+
+The strong performance of Elastic Net and Lasso in Zone 1 suggests that the relationship between predictors and power consumption is largely linear, with some redundancy among predictors making regularization beneficial.
+
+In contrast, the superior performance of Random Forest in Zone 2 indicates the presence of nonlinear relationships or interactions between variables, which linear models fail to capture.
+
+## 7.2 Limitations of the Current Feature Set
+
+The poor performance across Zone 2 and especially Zone 3 suggests that the available predictors (temperature, humidity, wind speed, and flow variables) are not sufficient to fully explain power consumption.
+
+Important missing factors may include human activity patterns, economic behavior, and more detailed temporal effects such as seasonality.
+
+## 7.3 Model Complexity Does Not Guarantee Better Performance
+
+Despite being more advanced, XGBoost performed poorly across all zones. This suggests that either the model was not properly tuned or that the dataset does not support highly complex models.
+
+This reinforces that more complex models are not inherently better.
+
+## 7.4 Implications for Prediction
+
+Zone 1 predictions can be considered reasonably reliable using Elastic Net or Lasso. Zone 2 predictions are weaker but still somewhat usable. Zone 3 predictions are unreliable and should not be used without improving the model or the data.
+
+## 7.5 Recommendations for Improvement
+
+To improve model performance, the following steps are recommended:
+
+- Add more relevant features such as calendar effects or lagged variables
+- Explore time-series modeling approaches
+- Perform more thorough hyperparameter tuning
+- Investigate potential data quality issues
+
+
+# Section 8: Project Workflow and Contributions
+
+The table below summarizes the workflow of the project along with the primary contributor responsible for each stage.
+
+| Step | Stage                          | Description                                                                 | Responsible |
+|------|--------------------------------|-----------------------------------------------------------------------------|-------------|
+| 1    | Data Loading & Inspection      | Imported dataset, checked structure, handled data types and missing values | YG     |
+| 2    | Exploratory Data Analysis      | Generated summary statistics, visualizations, and identified trends        | YG      |
+| 3    | Feature Engineering           | Created time-based and cyclical features for modeling                      | YG      |
+| 4    | Data Splitting                | Performed time-based train/test split to prevent data leakage              | YG      |
+| 5    | Baseline Modeling             | Built initial linear regression models for each zone                       | SS      |
+| 6    | Advanced Modeling             | Implemented Ridge, Lasso, Elastic Net, Random Forest, and XGBoost models   | SS      |
+| 7    | Model Tuning                  | Applied cross-validation and selected optimal hyperparameters              | SS      |
+| 8    | Model Evaluation              | Compared models using RMSE, MAE, and R² on the test dataset                | HM      |
+| 9    | Interpretation & Analysis     | Interpreted results and identified key findings and limitations            | HM      |
+| 10    | Final Knitting and Report Preparation     | Created the final Knitted pdf and report finalization            | HM        |
+
+
+# Appendix
+```{r appendix-code, echo=TRUE, eval=FALSE}
+# Appendix: Full R Code
+# ==============================================
+# Tetuan City Power Consumption Analysis
+# Yasmin Guadarrama, Harsh Mishrikotkar, Shivanshi Shukla
+# ==============================================
+
+# -- Setup ---------------------------------------------------------------------
+
+# knitr::opts_chunk$set(echo = FALSE,
+                      cache = TRUE)
+library(tidyverse)
+library(lubridate)
+library(GGally)
+library(dplyr)
+library(tibble)
+library(Metrics)
+
+
+# -- Section 1: Data Setup, Cleaning and Processing ----------------------------
+
+# Load and Inspect Data
+#setwd("C:/Users/yasmi/OneDrive/Desktop/Final Project")
+data <- read_csv("Tetuan City power consumption.csv")
+
+glimpse(data)
+summary(data)
+sum(duplicated(data))   # No duplicates
+
+# Fix DateTime Format
+# The dataset contains multiple timestamp formats:
+# - "1/1/2017 0:00"
+# - "01/01/2017 00:00"
+# - "2017-01-01 00:00:00"
+# parse_date_time() handles all of them.
+
+data <- data %>%
+  mutate(DateTime = parse_date_time(
+    DateTime,
+    orders = c("d/m/Y H:M",
+               "d/m/Y H:M:S",
+               "Y-m-d H:M:S",
+               "m/d/Y H:M",
+               "m/d/Y H:M:S")
+  ))
+
+sum(is.na(data$DateTime))
+range(data$DateTime)
+
+# Clean Column Names (Fix spacing issues)
+data <- data %>%
+  rename(
+    Zone1 = `Zone 1 Power Consumption`,
+    Zone2 = `Zone 2  Power Consumption`,
+    Zone3 = `Zone 3  Power Consumption`,
+    Wind.Speed = `Wind Speed`,
+    General.Diffuse.Flows = `general diffuse flows`,
+    Diffuse.Flows = `diffuse flows`
+  )
+
+
+# -- Exploratory Data Analysis --------------------------------------------------
+
+# Time Series Plot for All Zones
+data %>%
+  select(DateTime, Zone1, Zone2, Zone3) %>%
+  pivot_longer(-DateTime, names_to = "Zone", values_to = "Power") %>%
+  ggplot(aes(DateTime, Power, color = Zone)) +
+  geom_line(alpha = 0.4) +
+  labs(title = "Power Consumption Over Time", y = "Power") +
+  theme_minimal()
+
+# Histograms for All Variables
+data %>%
+  select(Temperature, Humidity, Wind.Speed,
+         Zone1, Zone2, Zone3) %>%
+  pivot_longer(everything(), names_to = "Variable", values_to = "Value") %>%
+  ggplot(aes(Value)) +
+  geom_histogram(bins = 30, fill = "steelblue", color = "white") +
+  facet_wrap(~ Variable, scales = "free") +
+  theme_minimal()
+
+# Boxplots for Zone Power Consumption
+data %>%
+  select(Zone1, Zone2, Zone3) %>%
+  pivot_longer(everything(), names_to = "Zone", values_to = "Power") %>%
+  ggplot(aes(Zone, Power)) +
+  geom_boxplot() +
+  theme_minimal()
+
+# Correlation Matrix
+data_corr <- data %>%
+  select(Temperature, Humidity, Wind.Speed,
+         General.Diffuse.Flows, Diffuse.Flows,
+         Zone1, Zone2, Zone3)
+
+ggcorr(data_corr, label = TRUE)
+
+
+# -- Section 2: Feature Engineering --------------------------------------------
+
+data <- data %>%
+  mutate(
+    hour  = hour(DateTime),
+    dow   = wday(DateTime),        # numeric 1-7
+    month = month(DateTime),       # numeric 1-12
+
+    # Cyclical encoding
+    sin_hour  = sin(2 * pi * hour / 24),
+    cos_hour  = cos(2 * pi * hour / 24),
+    sin_month = sin(2 * pi * month / 12),
+    cos_month = cos(2 * pi * month / 12),
+    sin_dow   = sin(2 * pi * dow / 7),
+    cos_dow   = cos(2 * pi * dow / 7)
+  )
+
+
+# -- Section 3: Data Standardization -------------------------------------------
+
+num_vars <- c(
+  "Temperature", "Humidity", "Wind.Speed",
+  "General.Diffuse.Flows", "Diffuse.Flows",
+  "sin_hour", "cos_hour",
+  "sin_month", "cos_month",
+  "sin_dow", "cos_dow"
+)
+
+data_scaled <- data %>%
+  mutate(across(all_of(num_vars), scale))
+
+
+# -- Section 4 (Pre-Modeling): Time-Based Train/Test Split ---------------------
+
+n <- nrow(data_scaled)
+train_end <- floor(0.8 * n)
+
+train <- data_scaled[1:train_end, ]
+test  <- data_scaled[(train_end + 1):n, ]
+
+
+# -- Section 4.1: Baseline Linear Regression Models ----------------------------
+
+# Convert categorical variables to factors
+train <- train %>%
+  mutate(
+    dow = as.factor(dow),
+    month = as.factor(month)
+  )
+test <- test %>%
+  mutate(
+    dow = as.factor(dow),
+    month = as.factor(month)
+  )
+
+# Linear Regression Models
+lm_z1 <- lm(Zone1 ~ Temperature + Humidity + `Wind.Speed` +
+              `General.Diffuse.Flows` + `Diffuse.Flows` +
+              hour + dow + month,
+            data = train)
+lm_z2 <- lm(Zone2 ~ Temperature + Humidity + `Wind.Speed` +
+              `General.Diffuse.Flows` + `Diffuse.Flows` +
+              hour + dow + month,
+            data = train)
+lm_z3 <- lm(Zone3 ~ Temperature + Humidity + `Wind.Speed` +
+              `General.Diffuse.Flows` + `Diffuse.Flows` +
+              hour + dow + month,
+            data = train)
+
+# Summaries
+summary(lm_z1)
+summary(lm_z2)
+summary(lm_z3)
+
+
+# -- Section 4.2: Regularized Regression Models (Ridge, Lasso, Elastic Net) ----
+
+library(glmnet)
+x_train <- model.matrix(Zone1 ~ . - DateTime, data = train)[, -1]
+x_test  <- model.matrix(Zone1 ~ . - DateTime, data = test)[, -1]
+
+y1_train <- train$Zone1
+y2_train <- train$Zone2
+y3_train <- train$Zone3
+
+y1_test <- test$Zone1
+y2_test <- test$Zone2
+y3_test <- test$Zone3
+
+ridge_z1 <- cv.glmnet(x_train, y1_train, alpha = 0)
+ridge_z2 <- cv.glmnet(x_train, y2_train, alpha = 0)
+ridge_z3 <- cv.glmnet(x_train, y3_train, alpha = 0)
+
+lasso_z1 <- cv.glmnet(x_train, y1_train, alpha = 1)
+lasso_z2 <- cv.glmnet(x_train, y2_train, alpha = 1)
+lasso_z3 <- cv.glmnet(x_train, y3_train, alpha = 1)
+
+enet_z1 <- cv.glmnet(x_train, y1_train, alpha = 0.5)
+enet_z2 <- cv.glmnet(x_train, y2_train, alpha = 0.5)
+enet_z3 <- cv.glmnet(x_train, y3_train, alpha = 0.5)
+
+
+# -- Section 4.3: Random Forest Models -----------------------------------------
+
+n <- nrow(data_scaled)
+train_end <- floor(0.8 * n)
+train <- data_scaled[1:train_end, ]
+test  <- data_scaled[(train_end + 1):n, ]
+
+library(randomForest)
+rf_z1 <- randomForest(Zone1 ~ . - DateTime, data = train, ntree = 100)
+rf_z2 <- randomForest(Zone2 ~ . - DateTime, data = train, ntree = 100)
+rf_z3 <- randomForest(Zone3 ~ . - DateTime, data = train, ntree = 100)
+
+
+# -- Section 4.4: Gradient Boosting Models (XGBoost) ---------------------------
+
+library(xgboost)
+dtrain_z1 <- xgb.DMatrix(data = x_train, label = y1_train)
+dtest_z1  <- xgb.DMatrix(data = x_test,  label = y1_test)
+
+dtrain_z2 <- xgb.DMatrix(data = x_train, label = y2_train)
+dtest_z2  <- xgb.DMatrix(data = x_test,  label = y2_test)
+
+dtrain_z3 <- xgb.DMatrix(data = x_train, label = y3_train)
+dtest_z3  <- xgb.DMatrix(data = x_test,  label = y3_test)
+
+params <- list(
+  objective = "reg:squarederror",
+  max_depth = 6,
+  eta = 0.1
+)
+xgb_z1 <- xgb.train(
+  params = params,
+  data = dtrain_z1,
+  nrounds = 100
+)
+xgb_z2 <- xgb.train(
+  params = params,
+  data = dtrain_z2,
+  nrounds = 100
+)
+xgb_z3 <- xgb.train(
+  params = params,
+  data = dtrain_z3,
+  nrounds = 100
+)
+
+
+# -- Section 5: Model Tuning and Cross-Validation ------------------------------
+
+ridge_z1$lambda.min
+lasso_z1$lambda.min
+enet_z1$lambda.min
+
+tuneRF(
+  x = x_train,
+  y = y1_train,
+  ntreeTry = 100,
+  stepFactor = 1.5,
+  improve = 0.01
+)
+
+library(xgboost)
+dtrain <- xgb.DMatrix(data = x_train, label = y1_train)
+dtest  <- xgb.DMatrix(data = x_test,  label = y1_test)
+
+params <- list(
+  objective = "reg:squarederror",
+  max_depth = 4,
+  eta = 0.05
+)
+xgb_model <- xgb.train(
+  params = params,
+  data = dtrain,
+  nrounds = 100
+)
+
+
+# -- Section 6: Model Evaluation -----------------------------------------------
+
+library(knitr)
+library(glmnet)
+library(xgboost)
+
+# Rebuild numeric matrices (avoids factor dummy mismatch from earlier chunks)
+num_predictors <- c("Temperature", "Humidity", "Wind.Speed",
+                    "General.Diffuse.Flows", "Diffuse.Flows",
+                    "hour", "dow", "month",
+                    "sin_hour", "cos_hour",
+                    "sin_month", "cos_month",
+                    "sin_dow", "cos_dow")
+
+x_train_s8 <- as.matrix(train[, num_predictors])
+x_test_s8  <- as.matrix(test[,  num_predictors])
+
+# Rebuild dtest DMatrix objects (C++ pointers don't persist across chunks)
+dtest_z1 <- xgb.DMatrix(data = x_test_s8, label = y1_test)
+dtest_z2 <- xgb.DMatrix(data = x_test_s8, label = y2_test)
+dtest_z3 <- xgb.DMatrix(data = x_test_s8, label = y3_test)
+
+# Refit glmnet models on clean numeric matrix
+ridge_z1 <- cv.glmnet(x_train_s8, y1_train, alpha = 0)
+ridge_z2 <- cv.glmnet(x_train_s8, y2_train, alpha = 0)
+ridge_z3 <- cv.glmnet(x_train_s8, y3_train, alpha = 0)
+
+lasso_z1 <- cv.glmnet(x_train_s8, y1_train, alpha = 1)
+lasso_z2 <- cv.glmnet(x_train_s8, y2_train, alpha = 1)
+lasso_z3 <- cv.glmnet(x_train_s8, y3_train, alpha = 1)
+
+enet_z1 <- cv.glmnet(x_train_s8, y1_train, alpha = 0.5)
+enet_z2 <- cv.glmnet(x_train_s8, y2_train, alpha = 0.5)
+enet_z3 <- cv.glmnet(x_train_s8, y3_train, alpha = 0.5)
+
+# Metrics helper
+metrics <- function(actual, pred, model, zone) {
+  tibble(
+    Model = model, Zone = zone,
+    RMSE  = round(sqrt(mean((actual - pred)^2)), 2),
+    MAE   = round(mean(abs(actual - pred)), 2),
+    R2    = round(1 - sum((actual - pred)^2) / sum((actual - mean(actual))^2), 4)
+  )
 }
 
-rf_imp_z1 <- extract_rf_imp(rf_z1, "Zone 1")
-rf_imp_z2 <- extract_rf_imp(rf_z2, "Zone 2")
-rf_imp_z3 <- extract_rf_imp(rf_z3, "Zone 3")
+results <- bind_rows(
+  # Zone 1
+  metrics(y1_test, as.vector(predict(ridge_z1, newx = x_test_s8, s = "lambda.min")), "Ridge",         "Zone 1"),
+  metrics(y1_test, as.vector(predict(lasso_z1, newx = x_test_s8, s = "lambda.min")), "Lasso",         "Zone 1"),
+  metrics(y1_test, as.vector(predict(enet_z1,  newx = x_test_s8, s = "lambda.min")), "Elastic Net",   "Zone 1"),
+  metrics(y1_test, predict(rf_z1,  newdata = test),                                  "Random Forest", "Zone 1"),
+  metrics(y1_test, predict(xgb_z1, newdata = dtest_z1),                              "XGBoost",       "Zone 1"),
 
-cat("=== Random Forest Importance — Zone 1 (top 10) ===\n")
-print(head(rf_imp_z1, 10))
-```
+  # Zone 2
+  metrics(y2_test, as.vector(predict(ridge_z2, newx = x_test_s8, s = "lambda.min")), "Ridge",         "Zone 2"),
+  metrics(y2_test, as.vector(predict(lasso_z2, newx = x_test_s8, s = "lambda.min")), "Lasso",         "Zone 2"),
+  metrics(y2_test, as.vector(predict(enet_z2,  newx = x_test_s8, s = "lambda.min")), "Elastic Net",   "Zone 2"),
+  metrics(y2_test, predict(rf_z2,  newdata = test),                                  "Random Forest", "Zone 2"),
+  metrics(y2_test, predict(xgb_z2, newdata = dtest_z2),                              "XGBoost",       "Zone 2"),
 
-```{r Part 9 - RF Importance Plot, fig.width=11, fig.height=7}
+  # Zone 3
+  metrics(y3_test, as.vector(predict(ridge_z3, newx = x_test_s8, s = "lambda.min")), "Ridge",         "Zone 3"),
+  metrics(y3_test, as.vector(predict(lasso_z3, newx = x_test_s8, s = "lambda.min")), "Lasso",         "Zone 3"),
+  metrics(y3_test, as.vector(predict(enet_z3,  newx = x_test_s8, s = "lambda.min")), "Elastic Net",   "Zone 3"),
+  metrics(y3_test, predict(rf_z3,  newdata = test),                                  "Random Forest", "Zone 3"),
+  metrics(y3_test, predict(xgb_z3, newdata = dtest_z3),                              "XGBoost",       "Zone 3")
+)
 
-bind_rows(rf_imp_z1, rf_imp_z2, rf_imp_z3) %>%
-  group_by(Zone) %>%
-  slice_max(Importance, n = 10) %>%
-  ungroup() %>%
-  mutate(Variable = tidytext::reorder_within(Variable, Importance, Zone)) %>%
-  ggplot(aes(x = Variable, y = Importance, fill = Zone)) +
-  geom_col(show.legend = FALSE) +
-  coord_flip() +
-  facet_wrap(~ Zone, scales = "free") +
-  tidytext::scale_x_reordered() +
-  scale_fill_brewer(palette = "Set1") +
-  labs(
-    title    = "Random Forest Variable Importance by Zone",
-    subtitle = "Metric: Mean Decrease in Node Impurity (IncNodePurity)",
-    x        = NULL,
-    y        = "Importance"
-  ) +
-  theme_minimal(base_size = 11)
-```
+# Zone 1 Results Table
+kable(
+  results %>% filter(Zone == "Zone 1") %>% select(-Zone) %>% arrange(RMSE),
+  caption = "Model Comparison - Zone 1",
+  col.names = c("Model", "RMSE", "MAE", "R²")
+)
 
-The faceted bar chart shows which predictors each Random Forest relies on most. Variables appearing at the top of all three panels are universally important drivers of power consumption across the city.
+# Zone 2 Results Table
+kable(
+  results %>% filter(Zone == "Zone 2") %>% select(-Zone) %>% arrange(RMSE),
+  caption = "Model Comparison - Zone 2",
+  col.names = c("Model", "RMSE", "MAE", "R²")
+)
 
-## 9.5 XGBoost Variable Importance
-
-```{r Part 9 - XGBoost Importance, fig.width=9, fig.height=5}
-
-xgb_imp_z1 <- xgb.importance(model = xgb_z1)
-xgb_imp_z2 <- xgb.importance(model = xgb_z2)
-xgb_imp_z3 <- xgb.importance(model = xgb_z3)
-
-# Gain = average improvement in loss brought by a feature across all splits
-xgb_imp_z1 %>%
-  slice_max(Gain, n = 15) %>%
-  mutate(Feature = reorder(Feature, Gain)) %>%
-  ggplot(aes(x = Feature, y = Gain)) +
-  geom_col(fill = "#e66101", width = 0.7) +
-  coord_flip() +
-  labs(
-    title    = "XGBoost Variable Importance (Gain) — Zone 1",
-    subtitle = "Top 15 features; Gain = average loss improvement per split",
-    x        = NULL,
-    y        = "Gain"
-  ) +
-  theme_minimal(base_size = 11)
-
-cat("=== XGBoost Top Features — Zone 2 ===\n")
-print(head(xgb_imp_z2[, c("Feature", "Gain")], 10))
-
-cat("\n=== XGBoost Top Features — Zone 3 ===\n")
-print(head(xgb_imp_z3[, c("Feature", "Gain")], 10))
-```
-
-## 9.6 Actual vs. Predicted
-
-```{r Part 9 - Actual vs Predicted, fig.width=10, fig.height=4}
-
-# Points close to the red diagonal indicate accurate predictions.
-tibble(Actual = y1_test, Predicted = pred_xgb_z1) %>%
-  ggplot(aes(x = Actual, y = Predicted)) +
-  geom_point(alpha = 0.25, size = 0.8, color = "#1b7837") +
-  geom_abline(slope = 1, intercept = 0, color = "red", linewidth = 0.8) +
-  labs(
-    title    = "Actual vs. Predicted — XGBoost, Zone 1",
-    subtitle = "Points along the red diagonal indicate perfect predictions",
-    x        = "Actual Power Consumption",
-    y        = "Predicted Power Consumption"
-  ) +
-  theme_minimal(base_size = 11)
-```
-
-## 9.7 Key Findings
-
-**Best models:** Tree-based models — Random Forest and XGBoost — consistently achieve the lowest RMSE and highest R² across all three zones, confirming that power consumption exhibits nonlinear structure that linear and regularized regression cannot fully capture.
-
-**Most important variables:** The cyclical time features (`sin_hour`, `cos_hour`) and `Temperature` rank highest in both Random Forest and XGBoost importance for all zones, indicating that time-of-day and ambient temperature are the primary drivers of consumption. `Diffuse.Flows` and `General.Diffuse.Flows` also rank highly, reflecting the influence of solar radiation.
-
-**Zone differences:** Zone 1 shows the highest absolute RMSE values due to its larger consumption scale, but all models explain its variance well (high R²). Zone 3 is more volatile relative to its mean, making it harder to predict precisely with linear models. Tree-based models close this gap substantially.
-
-**Linear vs. regularized regression:** Ridge, Lasso, and Elastic Net improve only marginally over plain OLS, suggesting multicollinearity does not severely distort predictions despite the two correlated diffuse flow variables. Lasso shrinks `Wind.Speed` toward zero in some zones, confirming it is the least informative weather predictor.
-
-**Cyclical encoding:** The sin/cos-encoded time features allow linear and regularized models to partially capture the periodic nature of consumption — without them, linear models would treat hour 23 and hour 0 as maximally different, losing the continuity of the daily cycle.
-
-
-```{r appendix-code, echo=TRUE, eval=FALSE}
-
+# Zone 3 Results Table
+kable(
+  results %>% filter(Zone == "Zone 3") %>% select(-Zone) %>% arrange(RMSE),
+  caption = "Model Comparison - Zone 3",
+  col.names = c("Model", "RMSE", "MAE", "R²")
+)
 
 ```
